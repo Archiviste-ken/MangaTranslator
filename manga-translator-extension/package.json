@@ -1,0 +1,23 @@
+{
+  "name": "manga-translator-extension",
+  "version": "1.0.0",
+  "description": "Chrome extension to translate manga/manhwa pages using OCR and AI",
+  "private": true,
+  "scripts": {
+    "build": "node esbuild.config.mjs",
+    "watch": "node esbuild.config.mjs --watch",
+    "build:css": "node -e \"const fs=require('fs');fs.mkdirSync('dist',{recursive:true});fs.copyFileSync('src/styles.css','dist/styles.css')\"",
+    "build:all": "npm run build:css && npm run build",
+    "dev": "concurrently \"npm run watch\" \"node -e \\\"require('fs').watchFile('src/styles.css',()=>{require('fs').copyFileSync('src/styles.css','dist/styles.css');console.log('CSS copied')})\\\"\""
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.260",
+    "concurrently": "^8.2.2",
+    "esbuild": "^0.20.0",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "tesseract.js": "^5.0.4"
+  }
+}
