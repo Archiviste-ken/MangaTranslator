@@ -114,7 +114,37 @@ function toggleProviderFields(provider: TranslationProvider): void {
 
   if (apiKeyGroup) apiKeyGroup.style.display = provider === 'backend' ? 'none' : 'block';
   if (backendUrlGroup) backendUrlGroup.style.display = provider === 'backend' ? 'block' : 'none';
-  if (modelGroup) modelGroup.style.display = provider === 'openai' ? 'block' : 'none';
+  if (modelGroup) modelGroup.style.display = (provider === 'openai' || provider === 'groq') ? 'block' : 'none';
+
+  // Update model dropdown options based on provider
+  const modelSelect = document.getElementById('model') as HTMLSelectElement;
+  if (modelSelect) {
+    const currentVal = modelSelect.value;
+    modelSelect.innerHTML = '';
+    const models = provider === 'groq'
+      ? [
+          { value: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B (best)' },
+          { value: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B (fastest)' },
+          { value: 'mixtral-8x7b-32768', label: 'Mixtral 8x7B' },
+          { value: 'gemma2-9b-it', label: 'Gemma 2 9B' },
+        ]
+      : [
+          { value: 'gpt-4o-mini', label: 'GPT-4o Mini (fast)' },
+          { value: 'gpt-4o', label: 'GPT-4o (accurate)' },
+          { value: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
+          { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo (cheapest)' },
+        ];
+    models.forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m.value;
+      opt.textContent = m.label;
+      modelSelect.appendChild(opt);
+    });
+    // Restore selection if still valid
+    if (models.some(m => m.value === currentVal)) {
+      modelSelect.value = currentVal;
+    }
+  }
 }
 
 function showStatus(el: HTMLElement, message: string, type: 'success' | 'error'): void {
