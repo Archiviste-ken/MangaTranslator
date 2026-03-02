@@ -60,7 +60,7 @@ export default function HomePage() {
                 1
               </span>
               <span>
-                Set <code className="text-manga-text bg-manga-bg/50 px-1.5 py-0.5 rounded">OPENAI_API_KEY</code> in your{' '}
+                Set <code className="text-manga-text bg-manga-bg/50 px-1.5 py-0.5 rounded">GROQ_API_KEY</code> in your{' '}
                 <code className="text-manga-text bg-manga-bg/50 px-1.5 py-0.5 rounded">.env.local</code> file
               </span>
             </li>
@@ -86,7 +86,7 @@ export default function HomePage() {
         </div>
 
         <p className="text-xs text-manga-muted/50 mt-8">
-          Manga Translator v1.0.0 &middot; Built with Next.js, Tesseract.js, and OpenAI
+          Manga Translator v1.0.0 &middot; Built with Next.js, Tesseract.js, and Groq
         </p>
       </div>
     </main>
