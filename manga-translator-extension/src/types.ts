@@ -20,7 +20,7 @@ export interface OCRProgress {
   progress: number;
 }
 
-export type TranslationProvider = 'openai' | 'google' | 'deepl' | 'backend';
+export type TranslationProvider = 'groq' | 'openai' | 'google' | 'deepl' | 'backend';
 
 export interface TranslationConfig {
   provider: TranslationProvider;
@@ -41,11 +41,11 @@ export interface ExtensionSettings {
 
 export const DEFAULT_SETTINGS: ExtensionSettings = {
   translation: {
-    provider: 'openai',
+    provider: 'groq',
     apiKey: '',
     targetLang: 'en',
     backendUrl: 'http://localhost:3000',
-    model: 'gpt-4o-mini',
+    model: 'llama-3.3-70b-versatile',
   },
   ocrLanguages: ['jpn', 'kor', 'chi_sim'],
   autoDetectLang: true,
