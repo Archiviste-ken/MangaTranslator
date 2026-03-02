@@ -14,7 +14,7 @@ A production-quality Chrome Extension (Manifest V3) and Next.js backend that tra
 - **Universal Compatibility** — Works on any manga/manhwa/manhua website
 - **Smart Image Detection** — Automatically identifies manga panel images based on size, aspect ratio, and DOM context
 - **Multi-language OCR** — Tesseract.js-powered text extraction for Japanese, Korean, and Chinese
-- **Multiple Translation Providers** — Supports OpenAI GPT, Google Translate, DeepL, and a self-hosted backend
+- **Multiple Translation Providers** — Supports Groq (default, free), OpenAI GPT, Google Translate, DeepL, and a self-hosted backend
 - **Elegant UI** — Floating action button + slide-in sidebar with dark theme
 - **Draggable FAB** — Move the floating button anywhere on screen
 - **Translation Caching** — Avoids re-processing previously translated images
@@ -115,7 +115,7 @@ npm install
 
 # Create your environment file
 cp .env.example .env.local
-# Edit .env.local and add your OPENAI_API_KEY
+# Edit .env.local and add your GROQ_API_KEY
 
 # Start the dev server
 npm run dev
@@ -127,7 +127,17 @@ The backend runs at `http://localhost:3000`.
 
 ## API Key Setup
 
-### OpenAI (Default)
+### Groq (Default — Free & Fast)
+
+1. Go to [console.groq.com/keys](https://console.groq.com/keys)
+2. Sign up and create a free API key
+3. In the extension popup, **Groq** is already selected by default
+4. Paste your key in the **API Key** field
+5. Click **Save Settings**
+
+> Groq offers free API access with generous rate limits, making it ideal for manga translation.
+
+### OpenAI (Alternative)
 
 1. Go to [platform.openai.com/api-keys](https://platform.openai.com/api-keys)
 2. Create a new API key
@@ -154,7 +164,7 @@ The backend runs at `http://localhost:3000`.
 1. Start the Next.js backend (see above)
 2. Select **Local Backend** in the extension popup
 3. Set the backend URL (default: `http://localhost:3000`)
-4. The backend uses the `OPENAI_API_KEY` from its `.env.local`
+4. The backend uses `GROQ_API_KEY` (or `OPENAI_API_KEY` as fallback) from its `.env.local`
 
 ---
 
@@ -171,8 +181,9 @@ The backend runs at `http://localhost:3000`.
 
 - **Drag** the floating button to reposition it
 - Translations are **cached** — revisiting a page won't re-process
-- Use **GPT-4o Mini** for the best speed/cost balance
-- Use **GPT-4o** for the most accurate translations
+- Use **Llama 3.3 70B** (Groq) for the best quality with free access
+- Use **Llama 3.1 8B** (Groq) for the fastest translations
+- Use **GPT-4o** (OpenAI) for the most accurate translations (paid)
 - The extension **auto-detects** the source language based on the site's URL and metadata
 
 ---
@@ -297,10 +308,10 @@ langs: jpn,kor
 | Extension | TypeScript, Chrome Manifest V3 |
 | Build | esbuild |
 | OCR | Tesseract.js 5 |
-| Translation | OpenAI GPT-4o, Google Translate, DeepL |
+| Translation | Groq (Llama 3.3), OpenAI GPT-4o, Google Translate, DeepL |
 | UI | Tailwind CSS, Custom CSS |
 | Backend | Next.js 14 (App Router) |
-| AI Client | OpenAI Node.js SDK |
+| AI Client | OpenAI Node.js SDK (Groq-compatible) |
 
 ---
 
