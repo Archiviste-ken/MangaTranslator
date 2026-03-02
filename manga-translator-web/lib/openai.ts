@@ -1,35 +1,61 @@
-// ─── Manga Translator Web · OpenAI Library ──────────────────────────────────
+// ─── Manga Translator Web · Groq/OpenAI Library ─────────────────────────────
+// Supports both Groq (default) and OpenAI as backends.
+// Uses the OpenAI SDK since Groq exposes an OpenAI-compatible API.
 
 import OpenAI from 'openai';
 
-const apiKey = process.env.OPENAI_API_KEY;
+// ─── Client Setup ────────────────────────────────────────────────────────────
 
-if (!apiKey) {
-  console.warn('[Manga Translator] OPENAI_API_KEY not set. Translation will fail.');
+const groqApiKey = process.env.GROQ_API_KEY;
+const openaiApiKey = process.env.OPENAI_API_KEY;
+
+// Prefer Groq, fallback to OpenAI
+const activeProvider = groqApiKey ? 'groq' : openaiApiKey ? 'openai' : null;
+const activeKey = groqApiKey || openaiApiKey || 'missing-key';
+const baseURL = groqApiKey
+  ? 'https://api.groq.com/openai/v1'
+  : 'https://api.openai.com/v1';
+
+if (!activeProvider) {
+  console.warn('[Manga Translator] Neither GROQ_API_KEY nor OPENAI_API_KEY is set. Translation will fail.');
 }
 
-export const openai = new OpenAI({
-  apiKey: apiKey || 'missing-key',
+export const client = new OpenAI({
+  apiKey: activeKey,
+  baseURL,
 });
 
+export { activeProvider };
+
+// Default models per provider
+const DEFAULT_MODEL: Record<string, string> = {
+  groq: 'llama-3.3-70b-versatile',
+  openai: 'gpt-4o-mini',
+};
+
+// ─── Language Names ──────────────────────────────────────────────────────────
+
+const languageNames: Record<string, string> = {
+  en: 'English', es: 'Spanish', fr: 'French', de: 'German',
+  pt: 'Portuguese', zh: 'Chinese', ko: 'Korean', ja: 'Japanese',
+  ru: 'Russian', ar: 'Arabic',
+};
+
+// ─── Translation ─────────────────────────────────────────────────────────────
+
 /**
- * Translate text using OpenAI GPT.
+ * Translate text using the active AI provider (Groq or OpenAI).
  */
-export async function translateWithOpenAI(
+export async function translateText(
   text: string,
   targetLang: string = 'en',
-  model: string = 'gpt-4o-mini',
+  model?: string,
 ): Promise<string> {
-  const languageNames: Record<string, string> = {
-    en: 'English', es: 'Spanish', fr: 'French', de: 'German',
-    pt: 'Portuguese', zh: 'Chinese', ko: 'Korean', ja: 'Japanese',
-    ru: 'Russian', ar: 'Arabic',
-  };
-
   const langName = languageNames[targetLang] || targetLang;
+  const useModel = model || DEFAULT_MODEL[activeProvider || 'groq'];
 
-  const response = await openai.chat.completions.create({
-    model,
+  const response = await client.chat.completions.create({
+    model: useModel,
     messages: [
       {
         role: 'system',
@@ -52,16 +78,16 @@ Only return the translation, no explanations.`,
 /**
  * Translate a batch of texts.
  */
-export async function translateBatchWithOpenAI(
+export async function translateBatch(
   texts: string[],
   targetLang: string = 'en',
-  model: string = 'gpt-4o-mini',
+  model?: string,
 ): Promise<string[]> {
   const combined = texts
     .map((t, i) => `[${i}] ${t}`)
     .join('\n---\n');
 
-  const result = await translateWithOpenAI(combined, targetLang, model);
+  const result = await translateText(combined, targetLang, model);
 
   // Parse numbered response
   const parsed: string[] = new Array(texts.length).fill('');
