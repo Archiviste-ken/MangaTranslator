@@ -10,6 +10,54 @@ interface TranslationAdapter {
   translateBatch(texts: string[], targetLang: string, config: TranslationConfig): Promise<string[]>;
 }
 
+// ─── Groq Adapter (OpenAI-compatible, uses Groq cloud) ─────────────────────
+
+const groqAdapter: TranslationAdapter = {
+  async translate(text, targetLang, config) {
+    const [result] = await this.translateBatch([text], targetLang, config);
+    return result;
+  },
+
+  async translateBatch(texts, targetLang, config) {
+    const combinedText = texts
+      .map((t, i) => `[${i}] ${t}`)
+      .join('\n---\n');
+
+    const systemPrompt = `You are a professional manga/manhwa translator. Translate the following text to ${getLanguageName(targetLang)}. 
+Preserve the meaning, tone, and nuance. Manga text often has sound effects (onomatopoeia) — transliterate or translate them naturally.
+The input contains numbered segments separated by ---. Return the same numbered format with translations.
+If a segment contains only sound effects, provide a brief English equivalent in parentheses.
+Do not add explanations. Only output the translations.`;
+
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${config.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: config.model || 'llama-3.3-70b-versatile',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: combinedText },
+        ],
+        temperature: 0.3,
+        max_tokens: 2048,
+      }),
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(`Groq API error: ${(err as any)?.error?.message || response.statusText}`);
+    }
+
+    const data = await response.json();
+    const raw: string = data.choices?.[0]?.message?.content || '';
+
+    return parseNumberedResponse(raw, texts.length);
+  },
+};
+
 // ─── OpenAI Adapter ──────────────────────────────────────────────────────────
 
 const openaiAdapter: TranslationAdapter = {
@@ -171,6 +219,7 @@ const backendAdapter: TranslationAdapter = {
 // ─── Adapter Registry ────────────────────────────────────────────────────────
 
 const adapters: Record<TranslationProvider, TranslationAdapter> = {
+  groq: groqAdapter,
   openai: openaiAdapter,
   google: googleAdapter,
   deepl: deeplAdapter,
