@@ -1,0 +1,491 @@
+/* ─── Manga Translator · Injected Styles ─────────────────────────────────── */
+/* This file provides ALL styles for the content-script-injected UI.          */
+/* Uses a scoped root (#manga-translator-root) to avoid conflicts.            */
+
+/* ─── Root Container ──────────────────────────────────────────────────────── */
+
+#manga-translator-root {
+  --mt-bg: #1a1a2e;
+  --mt-panel: #16213e;
+  --mt-accent: #e94560;
+  --mt-accent-hover: #d93a55;
+  --mt-text: #eaeaea;
+  --mt-muted: #a0a0b0;
+  --mt-surface: #0f3460;
+  --mt-success: #4ade80;
+  --mt-warning: #fbbf24;
+  --mt-error: #f87171;
+  --mt-border: rgba(255, 255, 255, 0.08);
+  --mt-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  --mt-radius: 12px;
+  --mt-sidebar-width: 400px;
+  --mt-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 2147483647;
+  pointer-events: none;
+  font-family: var(--mt-font);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--mt-text);
+}
+
+#manga-translator-root * {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+#manga-translator-root *::-webkit-scrollbar {
+  width: 6px;
+}
+
+#manga-translator-root *::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#manga-translator-root *::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+
+#manga-translator-root *::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* ─── Floating Action Button ──────────────────────────────────────────────── */
+
+.mt-fab {
+  pointer-events: all;
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: auto;
+  height: 48px;
+  padding: 0 18px;
+  background: linear-gradient(135deg, var(--mt-accent) 0%, #c93050 100%);
+  border: none;
+  border-radius: 24px;
+  cursor: pointer;
+  box-shadow:
+    0 4px 16px rgba(233, 69, 96, 0.4),
+    0 2px 4px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 2147483647;
+  user-select: none;
+  outline: none;
+  display: flex;
+  align-items: center;
+}
+
+.mt-fab:hover {
+  transform: translateY(-2px) scale(1.03);
+  box-shadow:
+    0 8px 24px rgba(233, 69, 96, 0.5),
+    0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.mt-fab:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.mt-fab-dragging {
+  cursor: grabbing !important;
+  opacity: 0.85;
+  transition: none !important;
+}
+
+.mt-fab-inner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mt-fab-icon {
+  width: 22px;
+  height: 22px;
+  color: white;
+  flex-shrink: 0;
+}
+
+.mt-fab-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: white;
+  white-space: nowrap;
+  letter-spacing: 0.3px;
+}
+
+/* Processing animation */
+.mt-fab-processing {
+  animation: mt-fab-pulse 1.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.mt-fab-processing .mt-fab-icon {
+  animation: mt-spin 1.5s linear infinite;
+}
+
+@keyframes mt-fab-pulse {
+  0%, 100% { box-shadow: 0 4px 16px rgba(233, 69, 96, 0.4); }
+  50% { box-shadow: 0 4px 24px rgba(233, 69, 96, 0.7); }
+}
+
+@keyframes mt-spin {
+  100% { transform: rotate(360deg); }
+}
+
+/* ─── Sidebar ─────────────────────────────────────────────────────────────── */
+
+.mt-manga-sidebar {
+  pointer-events: all;
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: var(--mt-sidebar-width);
+  max-width: 90vw;
+  height: 100vh;
+  background: var(--mt-bg);
+  border-left: 1px solid var(--mt-border);
+  box-shadow: var(--mt-shadow);
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 2147483646;
+  overflow: hidden;
+}
+
+.mt-sidebar-open {
+  transform: translateX(0) !important;
+}
+
+.mt-sidebar-closed {
+  transform: translateX(100%) !important;
+}
+
+/* Header */
+.mt-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, var(--mt-surface) 0%, var(--mt-panel) 100%);
+  border-bottom: 1px solid var(--mt-border);
+  flex-shrink: 0;
+}
+
+.mt-sidebar-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.mt-sidebar-icon {
+  width: 22px;
+  height: 22px;
+  color: var(--mt-accent);
+}
+
+.mt-sidebar-close {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--mt-muted);
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.mt-sidebar-close:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--mt-text);
+}
+
+/* Content area */
+.mt-sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+/* ─── Empty State ─────────────────────────────────────────────────────────── */
+
+.mt-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 24px;
+  text-align: center;
+}
+
+.mt-empty-icon {
+  color: var(--mt-muted);
+  opacity: 0.4;
+  margin-bottom: 20px;
+}
+
+.mt-empty-text {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--mt-muted);
+  margin-bottom: 6px;
+}
+
+.mt-empty-subtext {
+  font-size: 12px;
+  color: rgba(160, 160, 176, 0.6);
+  max-width: 240px;
+  line-height: 1.6;
+}
+
+/* ─── Progress Section ────────────────────────────────────────────────────── */
+
+.mt-progress-section {
+  background: var(--mt-panel);
+  border: 1px solid var(--mt-border);
+  border-radius: var(--mt-radius);
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.mt-progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.mt-progress-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--mt-accent);
+}
+
+.mt-progress-count {
+  font-size: 12px;
+  color: var(--mt-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.mt-progress-bar-track {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.mt-progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--mt-accent), #ff6b8a);
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+
+/* Loading dots */
+.mt-loading-dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+
+.mt-dot {
+  width: 6px;
+  height: 6px;
+  background: var(--mt-accent);
+  border-radius: 50%;
+  animation: mt-pulse-dot 1.4s infinite ease-in-out both;
+}
+
+.mt-dot-1 { animation-delay: -0.32s; }
+.mt-dot-2 { animation-delay: -0.16s; }
+.mt-dot-3 { animation-delay: 0s; }
+
+@keyframes mt-pulse-dot {
+  0%, 80%, 100% { transform: scale(0); opacity: 0.5; }
+  40% { transform: scale(1); opacity: 1; }
+}
+
+/* ─── Error Card ──────────────────────────────────────────────────────────── */
+
+.mt-error-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  background: rgba(248, 113, 113, 0.08);
+  border: 1px solid rgba(248, 113, 113, 0.2);
+  border-radius: var(--mt-radius);
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: var(--mt-error);
+  line-height: 1.6;
+}
+
+.mt-error-card svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* ─── Results ─────────────────────────────────────────────────────────────── */
+
+.mt-results-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: var(--mt-muted);
+}
+
+.mt-clear-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--mt-muted);
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mt-clear-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--mt-text);
+}
+
+.mt-result-card {
+  background: var(--mt-panel);
+  border: 1px solid var(--mt-border);
+  border-radius: var(--mt-radius);
+  margin-bottom: 12px;
+  overflow: hidden;
+  animation: mt-card-in 0.3s ease-out forwards;
+}
+
+@keyframes mt-card-in {
+  0% { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.mt-result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid var(--mt-border);
+}
+
+.mt-result-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--mt-accent);
+  background: rgba(233, 69, 96, 0.12);
+  padding: 2px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.4px;
+}
+
+.mt-result-lang {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--mt-muted);
+  background: rgba(255, 255, 255, 0.06);
+  padding: 2px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.5px;
+}
+
+.mt-result-section {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--mt-border);
+}
+
+.mt-result-section:last-child {
+  border-bottom: none;
+}
+
+.mt-result-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.mt-section-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--mt-muted);
+}
+
+.mt-copy-btn {
+  background: rgba(233, 69, 96, 0.1);
+  border: 1px solid rgba(233, 69, 96, 0.2);
+  color: var(--mt-accent);
+  font-size: 10px;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 0.3px;
+}
+
+.mt-copy-btn:hover {
+  background: rgba(233, 69, 96, 0.2);
+}
+
+.mt-result-text {
+  font-size: 13px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.mt-text-original {
+  color: var(--mt-muted);
+  font-size: 12px;
+}
+
+.mt-text-translated {
+  color: var(--mt-text);
+}
+
+.mt-text-muted {
+  color: rgba(160, 160, 176, 0.5);
+  font-style: italic;
+  font-size: 12px;
+}
+
+/* ─── Responsive ──────────────────────────────────────────────────────────── */
+
+@media (max-width: 600px) {
+  #manga-translator-root {
+    --mt-sidebar-width: 100vw;
+  }
+
+  .mt-fab {
+    bottom: 16px;
+    right: 16px;
+    height: 44px;
+    padding: 0 14px;
+  }
+
+  .mt-fab-label {
+    display: none;
+  }
+}
