@@ -5,45 +5,73 @@ import { OCRResult, OCRProgress } from './types';
 
 type ProgressCallback = (progress: OCRProgress) => void;
 
-// Keep a scheduler alive for the session to reuse workers
-let scheduler: Tesseract.Scheduler | null = null;
-let loadedLangs: string[] = [];
+// Keep a worker alive for the session to reuse across images
+let activeWorker: Tesseract.Worker | null = null;
+let workerLang: string = '';
 
-async function getScheduler(languages: string[]): Promise<Tesseract.Scheduler> {
-  const langKey = languages.sort().join('+');
-  const currentKey = loadedLangs.sort().join('+');
+async function getWorker(language: string): Promise<Tesseract.Worker> {
+  // Reuse existing worker if language matches
+  if (activeWorker && workerLang === language) return activeWorker;
 
-  if (scheduler && langKey === currentKey) return scheduler;
-
-  // Tear down old scheduler
-  if (scheduler) {
-    try { await scheduler.terminate(); } catch { /* ignore */ }
+  // Tear down old worker
+  if (activeWorker) {
+    try { await activeWorker.terminate(); } catch { /* ignore */ }
   }
 
-  const newScheduler = Tesseract.createScheduler();
-
-  // Create 1 worker (sequential processing to avoid freezing)
-  const worker = await Tesseract.createWorker(languages, undefined, {
-    logger: () => {}, // silenced – we use scheduler progress below
+  // IMPORTANT: only pass a single language — Tesseract produces garbage with multiple
+  const worker = await Tesseract.createWorker(language, undefined, {
+    logger: () => {}, // silenced
   });
 
-  newScheduler.addWorker(worker);
-  scheduler = newScheduler;
-  loadedLangs = [...languages];
+  // Optimize recognition parameters for manga
+  await worker.setParameters({
+    tessedit_pageseg_mode: Tesseract.PSM.AUTO, // automatic page segmentation
+  });
 
-  return newScheduler;
+  activeWorker = worker;
+  workerLang = language;
+  return worker;
 }
 
 /**
- * Converts an image element to a data URL.
- * Handles CORS by proxying through canvas.
+ * Converts an image element to a data URL with optional preprocessing.
  */
-function imageToDataUrl(img: HTMLImageElement): string {
+function imageToProcessedDataUrl(img: HTMLImageElement): string {
   const canvas = document.createElement('canvas');
-  canvas.width = img.naturalWidth || img.width;
-  canvas.height = img.naturalHeight || img.height;
+  const w = img.naturalWidth || img.width;
+  const h = img.naturalHeight || img.height;
+  canvas.width = w;
+  canvas.height = h;
   const ctx = canvas.getContext('2d')!;
+
+  // Draw original image
   ctx.drawImage(img, 0, 0);
+
+  // Preprocess: convert to grayscale + increase contrast for better OCR
+  try {
+    const imageData = ctx.getImageData(0, 0, w, h);
+    const data = imageData.data;
+
+    for (let i = 0; i < data.length; i += 4) {
+      // Convert to grayscale using luminance formula
+      const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+
+      // Increase contrast: push values toward black or white
+      const contrast = 1.5; // contrast factor
+      const adjusted = ((gray / 255 - 0.5) * contrast + 0.5) * 255;
+      const clamped = Math.max(0, Math.min(255, adjusted));
+
+      data[i] = clamped;
+      data[i + 1] = clamped;
+      data[i + 2] = clamped;
+      // alpha stays the same
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+  } catch {
+    // Canvas tainted — return unprocessed
+  }
+
   return canvas.toDataURL('image/png');
 }
 
@@ -63,19 +91,18 @@ async function fetchImageAsDataUrl(src: string): Promise<string> {
 }
 
 /**
- * Get a usable image source for Tesseract.
+ * Get a usable image source for Tesseract, with preprocessing.
  */
 async function getImageSource(img: HTMLImageElement): Promise<string> {
-  // Try canvas approach first
+  // Try canvas approach first (also does grayscale/contrast preprocessing)
   try {
-    const dataUrl = imageToDataUrl(img);
-    // Verify it actually has pixel data (canvas might be tainted)
+    const dataUrl = imageToProcessedDataUrl(img);
     if (dataUrl && dataUrl.length > 100) return dataUrl;
   } catch {
     // Canvas tainted – fall through
   }
 
-  // Fetch as blob
+  // Fetch as blob (no preprocessing possible, but at least we get the image)
   try {
     return await fetchImageAsDataUrl(img.src);
   } catch {
@@ -85,28 +112,83 @@ async function getImageSource(img: HTMLImageElement): Promise<string> {
 }
 
 /**
- * Auto-detect the most likely language based on the page's location and metadata.
+ * Detect the SINGLE best OCR language for this page.
+ * Returns exactly one language string (never multiple).
  */
 export function detectPageLanguage(): string[] {
   const lang = document.documentElement.lang?.toLowerCase() || '';
-  const url = window.location.hostname;
+  const url = window.location.href.toLowerCase();
+  const title = document.title.toLowerCase();
+  const metaDesc = document.querySelector('meta[name="description"]')?.getAttribute('content')?.toLowerCase() || '';
+  const bodyText = document.body?.innerText?.slice(0, 2000)?.toLowerCase() || '';
 
-  if (lang.startsWith('ja') || url.includes('.jp') || url.includes('manga')) {
-    return ['jpn'];
-  }
-  if (lang.startsWith('ko') || url.includes('.kr') || url.includes('manhwa') || url.includes('webtoon')) {
-    return ['kor'];
-  }
-  if (lang.startsWith('zh') || url.includes('.cn') || url.includes('manhua')) {
-    return ['chi_sim'];
-  }
+  const combined = `${url} ${title} ${metaDesc} ${bodyText}`;
 
-  // Default: try all three
-  return ['jpn', 'kor', 'chi_sim'];
+  // Check for Japanese indicators
+  const jpnIndicators = [
+    lang.startsWith('ja'),
+    url.includes('.jp'),
+    /manga|rawdevart|rawkuma|mangaraw|senmanga|lhscan|loveheaven/i.test(url),
+    /[\u3040-\u309F\u30A0-\u30FF]/.test(bodyText), // hiragana or katakana in body
+  ];
+  if (jpnIndicators.some(Boolean)) return ['jpn'];
+
+  // Check for Korean indicators
+  const korIndicators = [
+    lang.startsWith('ko'),
+    url.includes('.kr'),
+    /manhwa|webtoon|toonily|mangatx|asura|reaper|luminous|flame/i.test(url),
+    /[\uAC00-\uD7AF]/.test(bodyText), // hangul in body
+  ];
+  if (korIndicators.some(Boolean)) return ['kor'];
+
+  // Check for Chinese indicators
+  const chiIndicators = [
+    lang.startsWith('zh'),
+    url.includes('.cn') || url.includes('.tw'),
+    /manhua|bilibili|kuaikan|dongman/i.test(url),
+  ];
+  if (chiIndicators.some(Boolean)) return ['chi_sim'];
+
+  // Default to Japanese — the most common manga language
+  return ['jpn'];
+}
+
+/**
+ * Clean up OCR text — remove junk characters and noise.
+ */
+function cleanOCRText(raw: string): string {
+  // Remove isolated single characters with no context (noise)
+  let text = raw
+    .replace(/[|｜\[\]【】{}()（）]/g, ' ')  // remove common OCR noise brackets
+    .replace(/\b[A-Z]{1,2}\b/g, '')           // remove isolated 1-2 letter caps (artifacts)
+    .replace(/\b\d{1,2}\b/g, '')              // remove isolated 1-2 digit numbers
+    .replace(/[+*#@$%^&~`]/g, '')             // remove symbols never in manga
+    .replace(/ {2,}/g, ' ')                   // collapse multiple spaces
+    .replace(/\n{3,}/g, '\n\n')               // collapse excessive newlines
+    .trim();
+
+  // Remove lines that are mostly noise (single characters or random letters)
+  const lines = text.split('\n');
+  const cleanedLines = lines.filter(line => {
+    const trimmed = line.trim();
+    if (trimmed.length === 0) return false;
+    if (trimmed.length <= 2) return false;           // too short to be meaningful
+    // Check if line has actual CJK characters or reasonable content
+    const cjkCount = (trimmed.match(/[\u3000-\u9FFF\uAC00-\uD7AF\u30A0-\u30FF\u3040-\u309F]/g) || []).length;
+    const totalChars = trimmed.replace(/\s/g, '').length;
+    // If it has CJK characters, keep it; otherwise need at least 3 chars
+    if (cjkCount > 0) return true;
+    if (totalChars >= 4) return true;
+    return false;
+  });
+
+  return cleanedLines.join('\n').trim();
 }
 
 /**
  * Run OCR on a single image element.
+ * Uses exactly one language at a time for accuracy.
  */
 export async function recognizeImage(
   img: HTMLImageElement,
@@ -117,30 +199,40 @@ export async function recognizeImage(
 
   const source = await getImageSource(img);
 
-  onProgress?.({ status: 'Loading OCR engine…', progress: 0.1 });
+  // Use only the first (best-guess) language
+  const language = languages[0] || 'jpn';
 
-  const sched = await getScheduler(languages);
+  onProgress?.({ status: `Loading OCR engine (${language})…`, progress: 0.1 });
+
+  const worker = await getWorker(language);
 
   onProgress?.({ status: 'Running OCR…', progress: 0.3 });
 
-  const result = await sched.addJob('recognize', source);
+  const result = await worker.recognize(source);
+
+  onProgress?.({ status: 'Processing results…', progress: 0.9 });
+
+  const rawText = result.data.text.trim();
+  const confidence = result.data.confidence;
+  const cleanedText = cleanOCRText(rawText);
 
   onProgress?.({ status: 'OCR complete', progress: 1 });
 
-  const text = result.data.text.trim();
-  const confidence = result.data.confidence;
-  const detectedLang = languages[0]; // Tesseract doesn't reliably expose detected script
+  // If confidence is extremely low, likely garbage — return empty
+  if (confidence < 15 || cleanedText.length < 3) {
+    return { text: '', confidence: 0, language };
+  }
 
-  return { text, confidence, language: detectedLang };
+  return { text: cleanedText, confidence, language };
 }
 
 /**
- * Terminate the scheduler and free resources.
+ * Terminate the worker and free resources.
  */
 export async function terminateOCR(): Promise<void> {
-  if (scheduler) {
-    try { await scheduler.terminate(); } catch { /* ignore */ }
-    scheduler = null;
-    loadedLangs = [];
+  if (activeWorker) {
+    try { await activeWorker.terminate(); } catch { /* ignore */ }
+    activeWorker = null;
+    workerLang = '';
   }
 }
