@@ -1,7 +1,7 @@
 // ─── Manga Translator Web · /api/translate ──────────────────────────────────
 
 import { NextRequest, NextResponse } from 'next/server';
-import { translateWithOpenAI, translateBatchWithOpenAI } from '@/lib/openai';
+import { translateText, translateBatch, activeProvider } from '@/lib/openai';
 
 export async function OPTIONS() {
   return new NextResponse(null, {
@@ -19,9 +19,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { text, texts, targetLang = 'en', batch = false, model } = body;
 
-    if (!process.env.OPENAI_API_KEY) {
+    if (!activeProvider) {
       return NextResponse.json(
-        { error: 'OPENAI_API_KEY is not configured on the server.' },
+        { error: 'No API key configured. Set GROQ_API_KEY or OPENAI_API_KEY in your .env.local file.' },
         { status: 500 },
       );
     }
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ translations: texts.map(() => '') });
       }
 
-      const translations = await translateBatchWithOpenAI(nonEmpty, targetLang, model);
+      const translations = await translateBatch(nonEmpty, targetLang, model);
       return NextResponse.json({ translations });
     }
 
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const translation = await translateWithOpenAI(text.trim(), targetLang, model);
+    const translation = await translateText(text.trim(), targetLang, model);
     return NextResponse.json({ translation });
 
   } catch (error: any) {
